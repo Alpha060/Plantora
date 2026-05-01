@@ -89,7 +89,7 @@ export async function requireAuth(): Promise<GuardResult> {
       userId: user.id,
       role: profile.role as UserRole,
       isBlocked: Boolean(profile.is_blocked),
-      isActive: profile.is_active !== false,
+      isActive: Boolean(profile.is_active ?? true),
     },
   };
 }
