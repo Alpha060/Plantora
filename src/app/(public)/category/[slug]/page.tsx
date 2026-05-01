@@ -21,23 +21,23 @@ export default async function CategoryPage({ params }: Params) {
 
   if (error || !category) return notFound();
 
-  // Subcategories
-  const { data: subcategories } = await supabase
-    .from("categories")
-    .select("id, name, slug")
-    .eq("parent_id", category.id)
-    .order("sort_order");
-
-  // Products
-  const { data: products } = await supabase
-    .from("products")
-    .select(
-      "id, name, slug, price, sale_price, avg_rating, total_reviews, is_featured, store_id, product_images(image_url, is_primary), stores(store_name)"
-    )
-    .eq("category_id", category.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  // Subcategories and Products in parallel
+  const [{ data: subcategories }, { data: products }] = await Promise.all([
+    supabase
+      .from("categories")
+      .select("id, name, slug")
+      .eq("parent_id", category.id)
+      .order("sort_order"),
+    supabase
+      .from("products")
+      .select(
+        "id, name, slug, price, sale_price, avg_rating, total_reviews, is_featured, store_id, product_images(image_url, is_primary), stores(store_name)"
+      )
+      .eq("category_id", category.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
 
   const productItems: ProductCardData[] = (products || []).map((p) => ({
     id: p.id, name: p.name, slug: p.slug, price: p.price,

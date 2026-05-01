@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     if (search) query = query.ilike("name", `%${search}%`);
 
     query = query
+      .abortSignal(AbortSignal.timeout(2500))
       .order(sortBy, { ascending: sortOrder === "asc" })
       .range(from, to);
 
@@ -50,7 +51,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { data: data || [], count: count || 0, page, pageSize },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+        },
+      }
     );
   } catch (error) {
     console.error("Products API error:", error);

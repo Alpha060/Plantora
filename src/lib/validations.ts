@@ -1,18 +1,20 @@
 import { z } from "zod";
 
 // Auth
-export const loginSchema = z.object({
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number"),
-});
-
 export const otpSchema = z.object({
   otp: z.string().length(6, "OTP must be 6 digits"),
 });
 
 export const registerSchema = z.object({
   full_name: z.string().min(2, "Name must be at least 2 characters").max(50),
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number"),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email address"),
+  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number").optional().or(z.literal("")),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const passwordLoginSchema = z.object({
+  email: z.string().email("Invalid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 // Address
@@ -104,9 +106,9 @@ export const serviceBookingSchema = z.object({
 });
 
 // Export types inferred from schemas
-export type LoginFormData = z.infer<typeof loginSchema>;
 export type OtpFormData = z.infer<typeof otpSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
+export type PasswordLoginFormData = z.infer<typeof passwordLoginSchema>;
 export type AddressFormData = z.infer<typeof addressSchema>;
 export type ProductFormData = z.infer<typeof productSchema>;
 export type ProductVariantFormData = z.infer<typeof productVariantSchema>;

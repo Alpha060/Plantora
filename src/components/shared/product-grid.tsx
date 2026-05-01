@@ -41,13 +41,14 @@ export function ProductGrid({
 
   return (
     <div className={cn("grid gap-4", gridCols[columns], className)}>
-      {products.map((product) => (
+      {products.map((product, index) => (
         <ProductCard
           key={product.id}
           product={product}
           onAddToCart={onAddToCart}
           onToggleWishlist={onToggleWishlist}
           isWishlisted={wishlistedIds.has(product.id)}
+          imageLoading={index === 0 ? "eager" : "lazy"}
         />
       ))}
     </div>

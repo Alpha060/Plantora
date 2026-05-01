@@ -89,8 +89,8 @@ export const USER_ROLES = ["buyer", "seller", "rider", "admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 // Routes
-export const PUBLIC_ROUTES = ["/", "/shop", "/product", "/services", "/about", "/contact", "/faq", "/terms", "/privacy", "/refund-policy", "/track-order", "/become-a-seller"];
-export const AUTH_ROUTES = ["/login", "/register"];
+export const PUBLIC_ROUTES = ["/", "/shop", "/product", "/services", "/landscape", "/about", "/contact", "/faq", "/terms", "/privacy", "/refund-policy", "/track-order"];
+export const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 export const BUYER_ROUTES = ["/cart", "/checkout", "/order-success", "/account"];
 export const SELLER_ROUTES = ["/seller"];
 export const RIDER_ROUTES = ["/rider"];
@@ -154,7 +154,7 @@ export const ROUTES = {
     ORDERS: "/admin/orders",
     CUSTOMERS: "/admin/customers",
     RIDERS: "/admin/riders",
-    SERVICES: "/admin/services",
+    Landscape: "/admin/Landscape",
     RETURNS: "/admin/returns",
     REVIEWS: "/admin/reviews",
     FINANCE: "/admin/finance",
@@ -175,4 +175,3 @@ export const ROUTES = {
     PROFILE: "/account/profile",
   },
 } as const;
-

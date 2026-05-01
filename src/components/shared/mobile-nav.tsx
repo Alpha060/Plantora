@@ -1,14 +1,16 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, ShoppingCart, Heart, User } from "lucide-react";
+import { Home, Package, ShoppingCart, Heart, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart-store";
+import { useIsClient } from "@/hooks/use-is-client";
 
 const navItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/shop", icon: Search },
+  { name: "Orders", href: "/account/orders", icon: Package },
   { name: "Cart", href: "/cart", icon: ShoppingCart, showBadge: true },
   { name: "Wishlist", href: "/account/wishlist", icon: Heart },
   { name: "Account", href: "/account/profile", icon: User },
@@ -16,7 +18,9 @@ const navItems = [
 
 export default function MobileNav() {
   const pathname = usePathname();
-  const totalItems = useCartStore((s) => s.totalItems);
+  const cartItems = useCartStore((s) => s.items);
+  const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const isClient = useIsClient();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
@@ -39,9 +43,9 @@ export default function MobileNav() {
             >
               <div className="relative">
                 <Icon className="h-5 w-5" />
-                {item.showBadge && totalItems() > 0 && (
+                {item.showBadge && isClient && cartCount > 0 && (
                   <Badge className="absolute -top-2 -right-3 h-4 min-w-4 flex items-center justify-center p-0 text-[9px] bg-emerald-600">
-                    {totalItems()}
+                    {cartCount}
                   </Badge>
                 )}
               </div>

@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useTransition, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,17 +22,33 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ProductGrid } from "@/components/shared/product-grid";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { createClient } from "@/lib/supabase/client";
 import { PRODUCTS_PER_PAGE, OCCASIONS } from "@/lib/constants";
 import type { ProductCardData, Category } from "@/types";
 
-export default function ShopPageClient() {
+const sortOptions: Record<string, string> = {
+  "created_at-desc": "Newest First",
+  "price-asc": "Price: Low to High",
+  "price-desc": "Price: High to Low",
+  "avg_rating-desc": "Highest Rated",
+  "name-asc": "Name: A-Z"
+};
+
+interface ShopPageClientProps {
+  initialProducts: ProductCardData[];
+  initialTotalCount: number;
+  initialCategories: Category[];
+}
+
+export default function ShopPageClient({
+  initialProducts,
+  initialTotalCount,
+  initialCategories,
+}: ShopPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [products, setProducts] = useState<ProductCardData[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const [isPending, startTransition] = useTransition();
 
   const page = parseInt(searchParams.get("page") || "1");
   const categorySlug = searchParams.get("category") || "";
@@ -51,65 +65,16 @@ export default function ShopPageClient() {
         if (val) params.set(key, val);
         else params.delete(key);
       }
-      if (!updates.page) params.set("page", "1");
-      router.push(`/shop?${params.toString()}`);
+      startTransition(() => {
+        router.push(`/shop?${params.toString()}`);
+      });
     },
     [searchParams, router]
   );
 
-  useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.data) {
-          const flat: Category[] = [];
-          for (const p of json.data) {
-            flat.push(p);
-            if (p.children) flat.push(...p.children);
-          }
-          setCategories(flat);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      try {
-        const params = new URLSearchParams();
-        params.set("page", String(page));
-        params.set("pageSize", String(PRODUCTS_PER_PAGE));
-        params.set("status", "active");
-        params.set("sort_by", sortBy);
-        params.set("sort_order", sortOrder);
-        if (categorySlug) {
-          const cat = categories.find((c) => c.slug === categorySlug);
-          if (cat) params.set("category_id", cat.id);
-        }
-        const res = await fetch(`/api/products?${params.toString()}`);
-        const json = await res.json();
-        if (res.ok) {
-          const items: ProductCardData[] = (json.data || []).map(
-            (p: Record<string, unknown>) => ({
-              id: p.id, name: p.name, slug: p.slug, price: p.price,
-              sale_price: p.sale_price, avg_rating: (p.avg_rating as number) ?? 0,
-              total_reviews: (p.total_reviews as number) ?? 0,
-              is_featured: (p.is_featured as boolean) ?? false,
-              store_id: p.store_id,
-              primary_image: (p.product_images as { image_url: string; is_primary: boolean }[])?.find((i) => i.is_primary)?.image_url || null,
-              store_name: (p.stores as { store_name: string } | null)?.store_name || null,
-            })
-          );
-          setProducts(items);
-          setTotalCount(json.count || 0);
-        }
-      } catch { /* silent */ } finally { setIsLoading(false); }
-    };
-    fetchProducts();
-  }, [page, categorySlug, occasion, sortBy, sortOrder, categories, minPrice, maxPrice]);
 
-  const totalPages = Math.ceil(totalCount / PRODUCTS_PER_PAGE);
+  const totalPages = Math.ceil(initialTotalCount / PRODUCTS_PER_PAGE);
   const hasActiveFilters = !!(categorySlug || occasion || minPrice || maxPrice);
 
   const FilterContent = () => (
@@ -117,7 +82,7 @@ export default function ShopPageClient() {
       {/* Categories */}
       <div className="space-y-3">
         <p className="font-heading text-sm font-semibold text-on-surface tracking-wide uppercase">Categories</p>
-        {categories.filter((c) => !c.parent_id).map((cat) => (
+        {initialCategories.filter((c) => !c.parent_id).map((cat) => (
           <label key={cat.id} className="flex items-center gap-3 cursor-pointer group">
             <Checkbox
               checked={categorySlug === cat.slug}
@@ -169,15 +134,7 @@ export default function ShopPageClient() {
         <Breadcrumbs items={[{ label: "Shop" }]} />
 
         {/* Header */}
-        <div className="flex items-end justify-between mt-6 mb-8">
-          <div>
-            <h1 className="font-heading text-3xl md:text-4xl font-bold text-on-surface tracking-tight">
-              The Collection
-            </h1>
-            <p className="text-sm text-on-surface-variant mt-1.5">
-              {totalCount} curated specimens
-            </p>
-          </div>
+        <div className="mt-6 mb-6 space-y-3">
           <div className="flex items-center gap-3">
             {/* Mobile filter */}
             <Sheet>
@@ -194,7 +151,7 @@ export default function ShopPageClient() {
             {/* Sort */}
             <Select value={`${sortBy}-${sortOrder}`} onValueChange={(val) => { if (!val) return; const [sb, so] = val.split("-"); updateFilters({ sort: sb, order: so }); }}>
               <SelectTrigger className="w-[180px] h-10 rounded-full bg-surface-lowest shadow-ambient-sm border-0 text-sm">
-                <SelectValue placeholder="Sort by" />
+                <div className="flex-1 text-left truncate">Sort by: {sortOptions[`${sortBy}-${sortOrder}`] || "Newest First"}</div>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="created_at-desc">Newest First</SelectItem>
@@ -205,6 +162,9 @@ export default function ShopPageClient() {
               </SelectContent>
             </Select>
           </div>
+          <p className="text-sm text-on-surface-variant">
+            {initialTotalCount} {initialTotalCount === 1 ? "product" : "products"} found
+          </p>
         </div>
 
         <div className="flex gap-10">
@@ -218,11 +178,11 @@ export default function ShopPageClient() {
 
           {/* Product Grid */}
           <main className="flex-1 min-w-0">
-            {isLoading ? (
+            {isPending ? (
               <div className="py-20"><LoadingSpinner text="Loading collection..." /></div>
             ) : (
               <>
-                <ProductGrid products={products} columns={3} />
+                <ProductGrid products={initialProducts} columns={3} />
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-3 mt-10">
                     <button

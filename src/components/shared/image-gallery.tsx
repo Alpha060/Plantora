@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SafeImage } from "@/components/shared/safe-image";
 
 interface ImageGalleryProps {
   images: { image_url: string; is_primary: boolean; sort_order: number }[];
@@ -36,13 +36,13 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
     <div className="space-y-3">
       {/* Main Image */}
       <div className="relative aspect-square rounded-xl border overflow-hidden bg-gray-50 group">
-        <Image
+        <SafeImage
           src={currentImage.image_url}
           alt={`${productName} - Image ${selectedIndex + 1}`}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
-          priority
+          loading="eager"
         />
         {sorted.length > 1 && (
           <>
@@ -84,7 +84,7 @@ export function ImageGallery({ images, productName }: ImageGalleryProps) {
                   : "border-transparent hover:border-gray-300"
               )}
             >
-              <Image
+              <SafeImage
                 src={img.image_url}
                 alt={`thumb ${index + 1}`}
                 fill

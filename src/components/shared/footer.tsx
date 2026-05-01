@@ -1,14 +1,21 @@
+"use client";
+
 import Link from "next/link";
-import { Leaf, Mail, Phone, MapPin } from "lucide-react";
+import { Mail, MapPin, Phone, ArrowRight, CheckCircle2, Leaf } from "lucide-react";
+import { useContact } from "@/hooks/use-contact";
 import { APP_NAME } from "@/lib/constants";
 
 const quickLinks = [
   { name: "Shop All", href: "/shop" },
+  { name: "Landscape", href: "/landscape" },
   { name: "About Us", href: "/about" },
   { name: "Contact", href: "/contact" },
   { name: "FAQ", href: "/faq" },
   { name: "Track Order", href: "/track-order" },
-  { name: "Become a Seller", href: "/become-a-seller" },
+  { name: "Become a Seller", href: "/seller/register" },
+  { name: "Seller Login", href: "/seller/login" },
+  { name: "Become a Rider", href: "/rider/login" },
+  { name: "Rider Login", href: "/rider/login" },
 ];
 
 const categories = [
@@ -27,12 +34,14 @@ const policies = [
 ];
 
 export default function Footer() {
+  const { contact, formatPhone, getWhatsappLink } = useContact();
+  
   return (
     <footer className="bg-emerald-900 text-white mt-auto">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
           {/* Brand */}
-          <div className="space-y-4">
+          <div className="lg:w-1/3 space-y-4">
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 bg-white/15 backdrop-blur rounded-lg flex items-center justify-center">
                 <Leaf className="h-5 w-5 text-emerald-300" />
@@ -41,9 +50,9 @@ export default function Footer() {
                 {APP_NAME}
               </span>
             </div>
-            <p className="text-emerald-200 text-sm leading-relaxed">
+            <p className="text-emerald-200 text-sm leading-relaxed max-w-sm">
               Daltonganj&apos;s premier online marketplace for fresh flowers,
-              plants, bouquets, and professional garden services. Bringing
+              plants, bouquets, and professional garden Landscape. Bringing
               nature closer to you.
             </p>
             <div className="flex gap-3 pt-2">
@@ -59,93 +68,96 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h3 className="font-semibold text-sm uppercase tracking-wider mb-4 text-emerald-300">
-              Quick Links
-            </h3>
-            <ul className="space-y-2.5">
-              {quickLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-emerald-100 hover:text-white transition-colors"
-                  >
-                    {link.name}
-                  </Link>
+          {/* Links Section */}
+          <div className="lg:w-2/3 grid grid-cols-2 md:grid-cols-3 gap-8">
+            {/* Quick Links */}
+            <div>
+              <h3 className="font-semibold text-sm uppercase tracking-wider mb-4 text-emerald-300">
+                Quick Links
+              </h3>
+              <ul className="space-y-2.5">
+                {quickLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-emerald-100 hover:text-white transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Categories */}
+            <div>
+              <h3 className="font-semibold text-sm uppercase tracking-wider mb-4 text-emerald-300">
+                Categories
+              </h3>
+              <ul className="space-y-2.5">
+                {categories.map((cat) => (
+                  <li key={cat.href}>
+                    <Link
+                      href={cat.href}
+                      className="text-sm text-emerald-100 hover:text-white transition-colors"
+                    >
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div className="col-span-2 md:col-span-1">
+              <h3 className="font-semibold text-sm uppercase tracking-wider mb-4 text-emerald-300">
+                Contact Us
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-2.5 text-sm text-emerald-100">
+                  <MapPin className="h-4 w-4 mt-0.5 text-emerald-400 shrink-0" />
+                  <span>Daltonganj, Palamu, Jharkhand 822101</span>
                 </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Categories */}
-          <div>
-            <h3 className="font-semibold text-sm uppercase tracking-wider mb-4 text-emerald-300">
-              Categories
-            </h3>
-            <ul className="space-y-2.5">
-              {categories.map((cat) => (
-                <li key={cat.href}>
-                  <Link
-                    href={cat.href}
-                    className="text-sm text-emerald-100 hover:text-white transition-colors"
+                <li>
+                  <a
+                    href={`tel:${formatPhone(contact.phone).replace(/ /g, "")}`}
+                    className="flex items-center gap-2.5 text-sm text-emerald-100 hover:text-white transition-colors"
                   >
-                    {cat.name}
-                  </Link>
+                    <Phone className="h-4 w-4 text-emerald-400" />
+                    {formatPhone(contact.phone)}
+                  </a>
                 </li>
-              ))}
-            </ul>
-          </div>
+                <li>
+                  <a
+                    href={`mailto:${contact.email}`}
+                    className="flex items-center gap-2.5 text-sm text-emerald-100 hover:text-white transition-colors"
+                  >
+                    <Mail className="h-4 w-4 text-emerald-400" />
+                    {contact.email}
+                  </a>
+                </li>
+              </ul>
 
-          {/* Contact */}
-          <div>
-            <h3 className="font-semibold text-sm uppercase tracking-wider mb-4 text-emerald-300">
-              Contact Us
-            </h3>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-2.5 text-sm text-emerald-100">
-                <MapPin className="h-4 w-4 mt-0.5 text-emerald-400 shrink-0" />
-                <span>Daltonganj, Palamu, Jharkhand 822101</span>
-              </li>
-              <li>
-                <a
-                  href="tel:+91XXXXXXXXXX"
-                  className="flex items-center gap-2.5 text-sm text-emerald-100 hover:text-white transition-colors"
-                >
-                  <Phone className="h-4 w-4 text-emerald-400" />
-                  +91 XXXXXXXXXX
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:hello@plantora.in"
-                  className="flex items-center gap-2.5 text-sm text-emerald-100 hover:text-white transition-colors"
-                >
-                  <Mail className="h-4 w-4 text-emerald-400" />
-                  hello@plantora.in
-                </a>
-              </li>
-            </ul>
-
-            {/* WhatsApp */}
-            <a
-              href="https://wa.me/91XXXXXXXXXX"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium transition-colors"
-            >
-              💬 Chat on WhatsApp
-            </a>
+              {/* WhatsApp */}
+              <a
+                href={getWhatsappLink(contact.whatsapp)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium transition-colors"
+              >
+                💬 Chat on WhatsApp
+              </a>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Bottom Bar */}
       <div className="border-t border-emerald-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-emerald-300">
-            <p>© {new Date().getFullYear()} {APP_NAME}. All rights reserved.</p>
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-emerald-300">
+            <p className="text-center md:text-left">© {new Date().getFullYear()} {APP_NAME}. All rights reserved.</p>
+            <div className="flex flex-wrap items-center justify-center gap-4">
               {policies.map((p) => (
                 <Link
                   key={p.href}

@@ -9,21 +9,10 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET() {
   try {
     const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*, children:categories!parent_id(id)")
-      .is("parent_id", null)
-      .order("sort_order", { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    // Also fetch subcategories for each parent
     const { data: allCategories, error: allError } = await supabase
       .from("categories")
       .select("*")
+      .abortSignal(AbortSignal.timeout(2500))
       .order("sort_order", { ascending: true });
 
     if (allError) {
@@ -38,7 +27,12 @@ export async function GET() {
         children: allCategories.filter((c) => c.parent_id === parent.id),
       }));
 
-    return NextResponse.json({ data: tree }, { status: 200 });
+    return NextResponse.json({ data: tree }, {
+      status: 200,
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+      },
+    });
   } catch (error) {
     console.error("Categories GET error:", error);
     return NextResponse.json(

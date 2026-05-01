@@ -1,22 +1,26 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/stores/auth-store";
 import type { AuthUser } from "@/types";
-import type { AuthChangeEvent, Session, User as SupabaseUser } from "@supabase/supabase-js";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 /**
  * Hook that manages auth state synchronization between Supabase and Zustand.
  * Should be called once at the app root level (via AuthProvider).
  */
 export function useAuth() {
-  const { user, isLoading, isAuthenticated, setUser, setLoading, clearUser } =
-    useAuthStore();
+  const hasInitialized = useRef(false);
 
-  const fetchProfile = useCallback(
-    async (userId: string, sessionUser?: SupabaseUser) => {
-      const supabase = createClient();
+  useEffect(() => {
+    // Prevent double-init in React Strict Mode
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const supabase = createClient();
+
+    const fetchProfile = async (userId: string, sessionUser?: SupabaseUser) => {
       const { data, error } = await supabase
         .from("users")
         .select("id, full_name, phone, email, avatar_url, role, is_active")
@@ -24,9 +28,6 @@ export function useAuth() {
         .single();
 
       if (error || !data) {
-        // No profile row yet — use session data as fallback
-        // This happens when user just registered via OTP but the profile
-        // row hasn't been created or RLS blocks the read
         if (sessionUser) {
           const fallbackProfile: AuthUser = {
             id: sessionUser.id,
@@ -37,69 +38,75 @@ export function useAuth() {
             role: "buyer",
             is_active: true,
           };
-          setUser(fallbackProfile);
-          return fallbackProfile;
+          useAuthStore.getState().setUser(fallbackProfile);
+          return;
         }
-        clearUser();
-        return null;
+        useAuthStore.getState().clearUser();
+        return;
       }
 
-      const profile = data as AuthUser;
-      setUser(profile);
-      return profile;
-    },
-    [setUser, clearUser]
-  );
-
-  const signOut = useCallback(async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    clearUser();
-  }, [clearUser]);
-
-  useEffect(() => {
-    const supabase = createClient();
+      useAuthStore.getState().setUser(data as AuthUser);
+    };
 
     // Check existing session on mount
     const initSession = async () => {
-      setLoading(true);
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (session?.user) {
-        await fetchProfile(session.user.id, session.user);
-      } else {
-        clearUser();
+        if (user) {
+          await fetchProfile(user.id, user);
+        } else {
+          useAuthStore.getState().clearUser();
+        }
+      } catch (error) {
+        console.error("Auth init error:", error);
+        useAuthStore.getState().clearUser();
       }
-      setLoading(false);
     };
 
-    initSession();
+    // Add timeout: if auth takes > 2s, show login button instead of spinner
+    const timeoutId = setTimeout(() => {
+      const state = useAuthStore.getState();
+      if (state.isLoading) {
+        state.setLoading(false);
+      }
+    }, 2000);
+
+    initSession().finally(() => clearTimeout(timeoutId));
 
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          await fetchProfile(session.user.id, session.user);
-        } else if (event === "SIGNED_OUT") {
-          clearUser();
-        }
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        await fetchProfile(session.user.id, session.user);
+      } else if (event === "SIGNED_OUT") {
+        useAuthStore.getState().clearUser();
       }
-    );
+    });
 
     return () => {
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, [fetchProfile, clearUser, setLoading]);
+  }, []); // Stable — no deps, runs once
+
+  // Return store state for convenience (reads are reactive via Zustand)
+  const { user, isLoading, isAuthenticated } = useAuthStore();
+
+  const signOut = useCallback(async () => {
+    const supabase = createClient();
+    useAuthStore.getState().clearUser();
+    await supabase.auth.signOut().catch(() => {});
+    window.location.assign("/api/auth/logout");
+  }, []);
 
   return {
     user,
     isLoading,
     isAuthenticated,
     signOut,
-    fetchProfile,
   };
 }

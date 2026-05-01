@@ -19,7 +19,7 @@ const RESEND_COOLDOWN = 30; // seconds
 function VerifyOtpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const phone = searchParams.get("phone") || "";
+  const email = searchParams.get("email") || "";
   const redirect = searchParams.get("redirect") || "/";
 
   const [isLoading, setIsLoading] = useState(false);
@@ -40,12 +40,15 @@ function VerifyOtpContent() {
   }, [resendTimer]);
 
   const handleResend = useCallback(async () => {
-    if (resendTimer > 0 || !phone) return;
+    if (resendTimer > 0 || !email) return;
     setIsLoading(true);
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOtp({
-        phone: `+91${phone}`,
+        email,
+        options: {
+          shouldCreateUser: false,
+        },
       });
       if (error) {
         toast.error(error.message);
@@ -58,20 +61,20 @@ function VerifyOtpContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [phone, resendTimer]);
+  }, [email, resendTimer]);
 
   const handleVerify = async (data: OtpFormData) => {
-    if (!phone) {
-      toast.error("Phone number missing. Please go back and try again.");
+    if (!email) {
+      toast.error("Email address missing. Please go back and try again.");
       return;
     }
     setIsLoading(true);
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.verifyOtp({
-        phone: `+91${phone}`,
+        email,
         token: data.otp,
-        type: "sms",
+        type: "email",
       });
 
       if (error) {
@@ -79,7 +82,7 @@ function VerifyOtpContent() {
         return;
       }
 
-      toast.success("Phone verified!");
+      toast.success("Email verified!");
       router.push(redirect);
       router.refresh();
     } catch {
@@ -89,10 +92,10 @@ function VerifyOtpContent() {
     }
   };
 
-  if (!phone) {
+  if (!email) {
     return (
       <div className="w-full text-center space-y-6">
-        <p className="text-on-surface-variant text-lg">No phone number provided.</p>
+        <p className="text-on-surface-variant text-lg">No email address provided.</p>
         <Button variant="outline" onClick={() => router.push("/login")} className="h-12 px-8 rounded-xl border-outline-variant/50 text-on-surface hover:bg-surface-container-low transition-colors">
           Go to Login
         </Button>
@@ -104,11 +107,11 @@ function VerifyOtpContent() {
     <div className="w-full space-y-8">
       {/* Header */}
       <div className="space-y-3">
-        <h1 className="text-3xl font-bold font-serif text-on-surface">Verify Your Phone</h1>
+        <h1 className="text-3xl font-bold font-serif text-on-surface">Verify Your Email</h1>
         <p className="text-on-surface-variant flex items-center flex-wrap gap-1">
           Enter the 6-digit code sent to{" "}
           <span className="font-semibold text-primary inline-flex items-center px-2 py-0.5 rounded-md bg-primary/5 border border-primary/10">
-            +91 {phone}
+            {email}
           </span>
         </p>
       </div>
@@ -180,7 +183,7 @@ function VerifyOtpFallback() {
   return (
     <div className="w-full space-y-8">
       <div className="space-y-3">
-        <h1 className="text-3xl font-bold font-serif text-on-surface">Verify Your Phone</h1>
+        <h1 className="text-3xl font-bold font-serif text-on-surface">Verify Your Email</h1>
         <p className="text-on-surface-variant">Loading...</p>
       </div>
       <div className="flex items-center justify-center py-12">

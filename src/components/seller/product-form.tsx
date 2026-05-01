@@ -463,7 +463,7 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
             <div>
               <p className="text-base font-semibold text-on-surface">Featured Placements</p>
               <p className="text-sm text-on-surface-variant">
-                Showcase on your store's featured row
+                Showcase on your store&apos;s featured row
               </p>
             </div>
             <Switch

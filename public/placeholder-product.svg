@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-labelledby="title desc">
+  <title id="title">Product placeholder</title>
+  <desc id="desc">A simple placeholder illustration for missing product images.</desc>
+  <rect width="400" height="400" fill="#f1f5f2" />
+  <rect x="40" y="40" width="320" height="320" rx="28" fill="#e5e9e6" />
+  <path
+    d="M200 108c-34 0-62 28-62 62 0 49 62 122 62 122s62-73 62-122c0-34-28-62-62-62Zm0 92c-17 0-30-13-30-30s13-30 30-30 30 13 30 30-13 30-30 30Z"
+    fill="#059669"
+    opacity=".85"
+  />
+</svg>

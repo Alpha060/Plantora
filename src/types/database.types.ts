@@ -556,6 +556,104 @@ export type Database = {
         }
         Relationships: []
       }
+      landscape_bookings: {
+        Row: {
+          address: string
+          admin_notes: string | null
+          area_size: string | null
+          booking_number: string
+          budget_range: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          description: string | null
+          final_price: number | null
+          id: string
+          preferred_date: string | null
+          quoted_price: number | null
+          scheduled_visit_date: string | null
+          service_type: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address: string
+          admin_notes?: string | null
+          area_size?: string | null
+          booking_number: string
+          budget_range?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone: string
+          description?: string | null
+          final_price?: number | null
+          id?: string
+          preferred_date?: string | null
+          quoted_price?: number | null
+          scheduled_visit_date?: string | null
+          service_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string
+          admin_notes?: string | null
+          area_size?: string | null
+          booking_number?: string
+          budget_range?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string
+          description?: string | null
+          final_price?: number | null
+          id?: string
+          preferred_date?: string | null
+          quoted_price?: number | null
+          scheduled_visit_date?: string | null
+          service_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landscape_bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landscape_gallery: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_featured: boolean
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_featured?: boolean
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_featured?: boolean
+          title?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1893,6 +1991,7 @@ export type Database = {
           lat: number | null
           lng: number | null
           logo_url: string | null
+          metadata: Json | null
           phone: string | null
           pin_code: string | null
           rating: number
@@ -1920,6 +2019,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           logo_url?: string | null
+          metadata?: Json | null
           phone?: string | null
           pin_code?: string | null
           rating?: number
@@ -1947,6 +2047,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           logo_url?: string | null
+          metadata?: Json | null
           phone?: string | null
           pin_code?: string | null
           rating?: number
@@ -2193,3 +2294,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

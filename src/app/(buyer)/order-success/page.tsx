@@ -2,12 +2,27 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Package, ShoppingBag } from "lucide-react";
-import { Suspense } from "react";
+import { CheckCircle2, Package, ShoppingBag, Copy, Shield } from "lucide-react";
+import { Suspense, useState } from "react";
+import { toast } from "sonner";
 
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get("order") || "";
+  const deliveryOtp = searchParams.get("otp") || "";
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyOtp = async () => {
+    if (!deliveryOtp) return;
+    try {
+      await navigator.clipboard.writeText(deliveryOtp);
+      setCopied(true);
+      toast.success("OTP copied!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center px-4">
@@ -31,10 +46,34 @@ function OrderSuccessContent() {
 
         {/* Order Number */}
         {orderNumber && (
-          <div className="bg-surface-low rounded-xl px-5 py-3 inline-block">
+          <div className="bg-surface-low rounded-xl px-5 py-3">
             <p className="text-xs text-on-surface-variant mb-0.5">Order Number</p>
             <p className="font-mono font-semibold text-on-surface tracking-wider">
               {orderNumber}
+            </p>
+          </div>
+        )}
+
+        {/* Delivery OTP */}
+        {deliveryOtp && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl px-5 py-4 space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <Shield className="h-4 w-4 text-amber-600" />
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Delivery OTP</p>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <p className="font-mono text-3xl font-bold tracking-[0.3em] text-amber-800 dark:text-amber-300">
+                {deliveryOtp}
+              </p>
+              <button
+                onClick={handleCopyOtp}
+                className="p-2 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+              >
+                <Copy className={`h-4 w-4 ${copied ? "text-green-600" : "text-amber-600"}`} />
+              </button>
+            </div>
+            <p className="text-[11px] text-amber-600 dark:text-amber-500 leading-relaxed">
+              Share this OTP with the delivery person. They will verify it before handing over your order.
             </p>
           </div>
         )}
@@ -44,7 +83,7 @@ function OrderSuccessContent() {
           <Link href="/account/orders" className="block">
             <button className="w-full h-12 rounded-full bg-botanical-gradient text-white font-medium text-sm flex items-center justify-center gap-2 shadow-ambient-sm hover:shadow-ambient transition-shadow">
               <Package className="h-4 w-4" />
-              View My Orders
+              Track My Order
             </button>
           </Link>
           <Link href="/shop" className="block">

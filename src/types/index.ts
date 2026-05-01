@@ -85,6 +85,7 @@ export type ProductCardData = Pick<
 > & {
   primary_image: string | null;
   store_name: string | null;
+  category_slug?: string | null;
 };
 
 /** Full product detail page data */

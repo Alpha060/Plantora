@@ -22,20 +22,21 @@ export default async function ProductPage({ params }: Params) {
 
   if (error || !product) return notFound();
 
-  // Related products (same category)
-  let related: Record<string, unknown>[] = [];
-  if (product.category_id) {
-    const { data } = await supabase
-      .from("products")
-      .select(
-        "id, name, slug, price, sale_price, avg_rating, total_reviews, is_featured, store_id, product_images(image_url, is_primary), stores(store_name)"
-      )
-      .eq("category_id", product.category_id)
-      .neq("id", product.id)
-      .eq("is_active", true)
-      .limit(4);
-    related = (data as Record<string, unknown>[]) || [];
-  }
+  // Related products (same category) — fetched in parallel with no blocking
+  const relatedPromise = product.category_id
+    ? supabase
+        .from("products")
+        .select(
+          "id, name, slug, price, sale_price, avg_rating, total_reviews, is_featured, store_id, product_images(image_url, is_primary), stores(store_name)"
+        )
+        .eq("category_id", product.category_id)
+        .neq("id", product.id)
+        .eq("is_active", true)
+        .limit(4)
+    : Promise.resolve({ data: [] as Record<string, unknown>[] });
+
+  const { data: relatedData } = await relatedPromise;
+  const related = (relatedData as Record<string, unknown>[]) || [];
 
   const categoryName = (product.categories as unknown as { name: string } | null)?.name || "Shop";
   const categorySlug = (product.categories as unknown as { slug: string } | null)?.slug || "";
