@@ -26,6 +26,7 @@ import {
   User,
   Undo2,
   Lock,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
@@ -106,14 +107,23 @@ export function AdminDashboardShell({
   const { signOut } = useAuth();
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex bg-gray-100">
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity" 
+          onClick={() => setIsMobileOpen(false)} 
+        />
+      )}
+
       {/* Sidebar — Dark theme */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 bg-slate-900 text-white transition-all duration-300 ${
-          isSidebarCollapsed ? "w-16" : "w-60"
-        } hidden md:flex flex-col`}
+        className={`fixed inset-y-0 left-0 z-50 bg-slate-900 text-white transition-all duration-300 flex flex-col w-60 ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 ${isSidebarCollapsed ? "md:w-16" : "md:w-60"}`}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700 shrink-0">
           {!isSidebarCollapsed && (
@@ -163,10 +173,11 @@ export function AdminDashboardShell({
                         isActive
                           ? "bg-emerald-600/20 text-emerald-400"
                           : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                      } ${isSidebarCollapsed ? "justify-center px-0" : ""}`}
+                      } ${isSidebarCollapsed ? "md:justify-center md:px-0" : ""}`}
+                      onClick={() => setIsMobileOpen(false)}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
-                      {!isSidebarCollapsed && <span>{link.name}</span>}
+                      <span className={isSidebarCollapsed ? "md:hidden" : ""}>{link.name}</span>
                     </Link>
                   );
                 })}
@@ -179,11 +190,11 @@ export function AdminDashboardShell({
           <button
             onClick={signOut}
             className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm text-red-400 hover:bg-slate-800 w-full transition-colors ${
-              isSidebarCollapsed ? "justify-center px-0" : ""
+              isSidebarCollapsed ? "md:justify-center md:px-0" : ""
             }`}
           >
             <LogOut className="h-4 w-4 shrink-0" />
-            {!isSidebarCollapsed && <span>Logout</span>}
+            <span className={isSidebarCollapsed ? "md:hidden" : ""}>Logout</span>
           </button>
         </div>
       </aside>
@@ -194,15 +205,20 @@ export function AdminDashboardShell({
           isSidebarCollapsed ? "md:ml-16" : "md:ml-60"
         }`}
       >
-        <header className="h-16 bg-white border-b sticky top-0 z-30 flex items-center justify-between px-6">
-          <h1 className="text-lg font-semibold">
-            {sections
-              .flatMap((s) => s.links)
-              .find(
-                (l) =>
-                  pathname === l.href || pathname.startsWith(l.href + "/")
-              )?.name || "Admin"}
-          </h1>
+        <header className="h-16 bg-white border-b sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={() => setIsMobileOpen(true)}>
+              <Menu className="h-5 w-5 text-gray-600" />
+            </Button>
+            <h1 className="text-base sm:text-lg font-semibold line-clamp-1">
+              {sections
+                .flatMap((s) => s.links)
+                .find(
+                  (l) =>
+                    pathname === l.href || pathname.startsWith(l.href + "/")
+                )?.name || "Admin"}
+            </h1>
+          </div>
           <div className="flex items-center gap-3">
             <Link href="/admin/notifications/send">
               <Button variant="ghost" size="icon">

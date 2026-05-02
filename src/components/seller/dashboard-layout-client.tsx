@@ -1,10 +1,9 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
-import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
 import {
   LayoutDashboard,
   Package,
@@ -21,28 +20,27 @@ import {
   LogOut,
   Menu,
   ChevronDown,
-  Users,
-  Tag,
-  Truck,
-  HeadphonesIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
-import { APP_NAME } from "@/lib/constants";
 
-const sidebarLinks = [
+interface SidebarLink {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  badgeKey?: string;
+}
+
+const sidebarLinks: SidebarLink[] = [
   { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { name: "Products", href: "/seller/products", icon: Package },
-  { name: "Orders", href: "/seller/orders", icon: ShoppingBag, badge: 5 },
-  { name: "Payments", href: "/seller/payments", icon: DollarSign },
-  { name: "Payouts", href: "/seller/payouts", icon: Wallet },
-  { name: "Customers", href: "/seller/customers", icon: Users },
+  { name: "Orders", href: "/seller/orders", icon: ShoppingBag, badgeKey: "orders" },
+  { name: "Earnings", href: "/seller/earnings", icon: DollarSign },
+  { name: "Settlements", href: "/seller/settlements", icon: Wallet },
   { name: "Reviews", href: "/seller/reviews", icon: Star },
-  { name: "Discounts", href: "/seller/discounts", icon: Tag },
   { name: "Store Settings", href: "/seller/store-settings", icon: Store },
-  { name: "Shipping", href: "/seller/shipping", icon: Truck },
+  { name: "Notifications", href: "/seller/notifications", icon: Bell },
   { name: "Profile", href: "/seller/profile", icon: User },
-  { name: "Support", href: "/seller/support", icon: HeadphonesIcon },
 ];
 
 export function SellerDashboardLayoutClient({
@@ -51,30 +49,53 @@ export function SellerDashboardLayoutClient({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { isSidebarCollapsed, toggleSidebar } = useUIStore();
   const { user, clearUser } = useAuthStore();
+  const [badges, setBadges] = useState<Record<string, number>>({});
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const handleLogout = async () => {
+  // Fetch real pending order count
+  const fetchBadges = useCallback(async () => {
     try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      clearUser();
-      toast.success("Logged out successfully");
-      router.push("/seller/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Logout failed. Please try again.");
+      const res = await fetch("/api/seller/orders?status=pending");
+      if (res.ok) {
+        const data = await res.json();
+        // API returns a plain array of orders
+        const count = Array.isArray(data) ? data.length : 0;
+        setBadges((prev) => ({ ...prev, orders: count }));
+      }
+    } catch {
+      // Silently fail — badge just won't show
     }
+  }, []);
+
+  useEffect(() => {
+    fetchBadges();
+    // Refresh badge count every 60 seconds
+    const interval = setInterval(fetchBadges, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchBadges]);
+
+  const handleLogout = () => {
+    clearUser();
+    window.location.href = "/api/auth/logout";
   };
 
   return (
     <div className="min-h-screen flex bg-gray-50">
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity" 
+          onClick={() => setIsMobileOpen(false)} 
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 bg-[#014f36] text-white border-r border-[#016040] shadow-sm transition-all duration-300 ${
-          isSidebarCollapsed ? "w-16" : "w-64"
-        } hidden md:flex flex-col`}
+        className={`fixed inset-y-0 left-0 z-50 bg-[#014f36] text-white border-r border-[#016040] shadow-sm transition-all duration-300 flex flex-col w-64 ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 ${isSidebarCollapsed ? "md:w-16" : "md:w-64"}`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-[#016040]">
@@ -85,7 +106,7 @@ export function SellerDashboardLayoutClient({
               </div>
               <div>
                 <p className="text-sm font-bold text-white tracking-wide">GreenBloom</p>
-                <p className="text-[9px] text-white/70 uppercase tracking-widest">Daltanganj</p>
+                <p className="text-[9px] text-white/70 uppercase tracking-widest">Daltonganj</p>
               </div>
             </div>
           )}
@@ -112,6 +133,7 @@ export function SellerDashboardLayoutClient({
             const Icon = link.icon;
             const isActive =
               pathname === link.href || pathname.startsWith(link.href + "/");
+            const badgeCount = link.badgeKey ? badges[link.badgeKey] : 0;
 
             return (
               <Link
@@ -122,15 +144,16 @@ export function SellerDashboardLayoutClient({
                   isActive
                     ? "bg-[#016545] text-white shadow-sm"
                     : "text-white/70 hover:bg-white/5 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center px-0" : ""}`}
+                } ${isSidebarCollapsed ? "md:justify-center md:px-0" : ""}`}
+                onClick={() => setIsMobileOpen(false)}
               >
                 <div className="flex items-center gap-3">
                   <Icon className="h-4.5 w-4.5 shrink-0" />
-                  {!isSidebarCollapsed && <span>{link.name}</span>}
+                  <span className={isSidebarCollapsed ? "md:hidden" : ""}>{link.name}</span>
                 </div>
-                {!isSidebarCollapsed && link.badge && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                    {link.badge}
+                {badgeCount > 0 && (
+                  <span className={`bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${isSidebarCollapsed ? "md:hidden" : ""}`}>
+                    {badgeCount}
                   </span>
                 )}
               </Link>
@@ -139,15 +162,16 @@ export function SellerDashboardLayoutClient({
         </nav>
 
         <div className="p-3 border-t border-[#016040]">
-          <button
-            onClick={handleLogout}
+          <a
+            href="/api/auth/logout"
+            onClick={() => clearUser()}
             className={`cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-colors ${
-              isSidebarCollapsed ? "justify-center px-0" : ""
+              isSidebarCollapsed ? "md:justify-center md:px-0" : ""
             }`}
           >
             <LogOut className="h-4.5 w-4.5 shrink-0" />
-            {!isSidebarCollapsed && <span>Logout</span>}
-          </button>
+            <span className={isSidebarCollapsed ? "md:hidden" : ""}>Logout</span>
+          </a>
         </div>
       </aside>
 
@@ -158,15 +182,15 @@ export function SellerDashboardLayoutClient({
         }`}
       >
         {/* Topbar */}
-        <header className="h-16 bg-white border-b sticky top-0 z-30 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleSidebar}>
+        <header className="h-16 bg-white border-b sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={() => setIsMobileOpen(true)}>
               <Menu className="h-5 w-5 text-gray-600" />
             </Button>
-            <Button variant="ghost" size="icon" className="hidden md:flex text-gray-400" onClick={toggleSidebar}>
+            <Button variant="ghost" size="icon" className="hidden md:flex text-gray-400 shrink-0" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-bold text-gray-800 hidden sm:block">
+            <h1 className="text-base sm:text-lg font-bold text-gray-800 line-clamp-1">
               {sidebarLinks.find(
                 (l) => pathname === l.href || pathname.startsWith(l.href + "/")
               )?.name || "Dashboard"}

@@ -1,8 +1,12 @@
 import ShopPageClient from "./page-client";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { PRODUCTS_PER_PAGE } from "@/lib/constants";
 import type { ProductCardData, Category } from "@/types";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export default async function ShopPageWrapper({
   searchParams,
@@ -11,6 +15,12 @@ export default async function ShopPageWrapper({
 }) {
   const params = await searchParams;
   const supabase = await createClient();
+  
+  // Use admin client for categories to bypass RLS, treating them as public reference data
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   
   const pageStr = typeof params.page === "string" ? params.page : "1";
   const page = parseInt(pageStr) || 1;
@@ -21,17 +31,18 @@ export default async function ShopPageWrapper({
   const minPrice = typeof params.min_price === "string" ? params.min_price : "";
   const maxPrice = typeof params.max_price === "string" ? params.max_price : "";
 
-  // Fetch categories and products in parallel for lightning speed
-  const categoriesPromise = supabase.from("categories").select("*").order("name");
+  // Fetch categories using admin client for lightning speed and RLS bypass
+  const categoriesPromise = adminClient.from("categories").select("*").order("name");
 
-  // Build product query
+  // Build product query without joining categories to avoid RLS permission errors for authenticated users
   let productQuery = supabase
     .from("products")
     .select(
-      "id, name, slug, price, sale_price, avg_rating, total_reviews, is_featured, store_id, product_images!inner(image_url, is_primary), stores!inner(store_name), categories(slug)",
+      "id, name, slug, price, sale_price, avg_rating, total_reviews, is_featured, store_id, category_id, product_images!inner(image_url, is_primary), stores!inner(store_name)",
       { count: "exact" }
     )
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .eq("is_deleted", false);
 
   if (occasion) {
     productQuery = productQuery.contains("occasion", [occasion]);
@@ -64,7 +75,17 @@ export default async function ShopPageWrapper({
     }
   }
 
-  const { data: productData, count } = await productQuery;
+  const { data: productData, count, error } = await productQuery;
+  
+  if (error) {
+    console.error("Shop page product query error:", error);
+    console.error("Error specifics:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+  }
   
   let initialProducts: ProductCardData[] = [];
   if (productData) {
@@ -80,7 +101,7 @@ export default async function ShopPageWrapper({
       store_id: p.store_id,
       primary_image: p.product_images?.find((img: any) => img.is_primary)?.image_url || p.product_images?.[0]?.image_url || null,
       store_name: p.stores?.store_name || null,
-      category_slug: p.categories?.slug || null,
+      category_slug: categories.find((c) => c.id === p.category_id)?.slug || null,
     }));
   }
 

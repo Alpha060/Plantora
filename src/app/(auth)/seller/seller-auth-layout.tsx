@@ -27,7 +27,7 @@ export function SellerAuthLayout({ children }: SellerAuthLayoutProps) {
             </div>
             <div className="flex flex-col">
               <span className="text-[#1A3614] font-serif text-xl font-bold leading-none">Plantora</span>
-              <span className="text-[#3B7033] text-[10px] tracking-[0.25em] uppercase font-semibold">DALTANGANJ</span>
+              <span className="text-[#3B7033] text-[10px] tracking-[0.25em] uppercase font-semibold">DALTONGANJ</span>
             </div>
           </Link>
           {!isLogin && (
@@ -68,7 +68,7 @@ export function SellerAuthLayout({ children }: SellerAuthLayoutProps) {
             <p className="text-[#334155] text-[15px] mb-10 leading-relaxed max-w-[95%]">
               {isLogin
                 ? "Login to your seller account and manage your store easily."
-                : "Start selling your flowers, plants and gardening products to thousands of happy customers in Daltanganj."}
+                : "Start selling your flowers, plants and gardening products to thousands of happy customers in Daltonganj."}
             </p>
 
             {/* Features */}
@@ -186,7 +186,7 @@ export function SellerAuthLayout({ children }: SellerAuthLayoutProps) {
               </div>
             </div>
             <div className="text-center text-[10px] text-[#718096] pt-6 mt-6 border-t border-[#E2E8F0]">
-              © 2024 Plantora Daltanganj. All Rights Reserved.
+              © 2024 Plantora DaltOnganj. All Rights Reserved.
             </div>
           </div>
         </div>
@@ -215,7 +215,7 @@ export function SellerAuthLayout({ children }: SellerAuthLayoutProps) {
               </div>
               <div className="flex flex-col">
                 <span className="text-white font-serif text-lg font-bold leading-none drop-shadow-md">Plantora</span>
-                <span className="text-white/90 text-[8px] tracking-[0.25em] uppercase font-semibold drop-shadow-md">DALTANGANJ</span>
+                <span className="text-white/90 text-[8px] tracking-[0.25em] uppercase font-semibold drop-shadow-md">DALTONGANJ</span>
               </div>
             </Link>
             {!isLogin ? (

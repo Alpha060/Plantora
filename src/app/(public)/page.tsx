@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/shared/product-grid";
 import type { ProductCardData } from "@/types";
 
-// Revalidate homepage every 60 seconds (ISR)
-export const revalidate = 60;
+// Do not cache the homepage, fetch fresh data
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -43,6 +44,7 @@ export default async function HomePage() {
       .from("products")
       .select("id, name, slug, price, sale_price, avg_rating, total_reviews, is_featured, store_id, product_images(image_url, is_primary), stores(store_name), categories(slug)")
       .eq("is_active", true)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false })
       .limit(10)
       .abortSignal(AbortSignal.timeout(2500)),
@@ -85,9 +87,9 @@ export default async function HomePage() {
   
   // Fallbacks if no gallery images are featured
   const fallbackImages = [
-    "https://images.unsplash.com/photo-1558904541-efa843a96f0f?q=80&w=800",
-    "https://images.unsplash.com/photo-1598511726623-d059996e5720?q=80&w=800",
-    "https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?q=80&w=800"
+    "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?q=80&w=800",
+    "https://images.unsplash.com/photo-1558171813-4c088753af8f?q=80&w=800",
+    "https://images.unsplash.com/photo-1524247108137-732e0f642303?q=80&w=800"
   ];
   
   const gardenImages = [

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
 import type { SellerDocument } from "@/types";
 
-type AdminSellerStatus = "active" | "rejected" | "suspended";
+type AdminSellerStatus = "approved" | "rejected" | "suspended";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown error";
@@ -41,19 +42,39 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .select("*")
       .eq("store_id", storeId);
 
-    // 4. Generate Signed URLs for documents since the bucket is private
+    // 4. Generate Signed URLs for documents using admin client (bypasses storage RLS)
+    const adminSupabase = createAdminClient();
     const documentsWithUrls = await Promise.all((docs || []).map(async (doc: SellerDocument) => {
       let viewUrl = doc.document_url;
-      // If it's not an external HTTP link, assume it's a storage path
-      if (viewUrl && !viewUrl.startsWith("http")) {
-        const { data: signedData } = await supabase.storage
-          .from("seller-documents")
-          .createSignedUrl(viewUrl, 60 * 60); // 1 hour expiry
-        
-        if (signedData?.signedUrl) {
-          viewUrl = signedData.signedUrl;
+      
+      if (!viewUrl) {
+        return { ...doc, view_url: null };
+      }
+
+      // Extract storage path from full public URL if needed
+      // Public URLs look like: https://xxx.supabase.co/storage/v1/object/public/seller-documents/pan/xxx.jpg
+      let storagePath = viewUrl;
+      if (viewUrl.startsWith("http")) {
+        const bucketMarker = "/seller-documents/";
+        const idx = viewUrl.indexOf(bucketMarker);
+        if (idx !== -1) {
+          storagePath = viewUrl.substring(idx + bucketMarker.length);
         }
       }
+
+      // Generate a signed URL for the extracted path using admin client
+      const { data: signedData, error: signError } = await adminSupabase.storage
+        .from("seller-documents")
+        .createSignedUrl(storagePath, 60 * 60); // 1 hour expiry
+      
+      if (signError) {
+        console.error(`Failed to sign URL for ${doc.document_type}:`, signError.message);
+      }
+
+      if (signedData?.signedUrl) {
+        viewUrl = signedData.signedUrl;
+      }
+      // If signing fails, fall back to the original public URL
 
       return {
         ...doc,
@@ -95,7 +116,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     if (
       !status ||
-      !["active", "rejected", "suspended"].includes(String(status))
+      !["approved", "rejected", "suspended"].includes(String(status))
     ) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
@@ -111,9 +132,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .update({
         status: nextStatus,
         approval_note: nextApprovalNote,
-        approved_at: nextStatus === "active" ? new Date().toISOString() : null,
-        approved_by: nextStatus === "active" ? guard.ctx.userId : null,
-        is_active: nextStatus === "active"
+        approved_at: nextStatus === "approved" ? new Date().toISOString() : null,
+        approved_by: nextStatus === "approved" ? guard.ctx.userId : null,
+        is_active: nextStatus === "approved"
       })
       .eq("id", storeId);
 

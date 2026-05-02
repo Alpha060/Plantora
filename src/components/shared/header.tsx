@@ -119,8 +119,8 @@ export default function Header() {
             </span>
             <span className="hidden sm:flex items-center gap-1">
               <Phone className="h-3 w-3" />
-              <span className="font-medium text-xs hidden sm:inline-block">
-                {formatPhone(contact.phone)}
+              <span className="font-medium text-xs hidden sm:inline-block" suppressHydrationWarning>
+                {isClient ? formatPhone(contact.phone) : ""}
               </span>
             </span>
           </div>

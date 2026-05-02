@@ -181,6 +181,11 @@ export async function POST(request: NextRequest) {
       await supabase.from("product_variants").insert(variantRecords);
     }
 
+    // Invalidate public caches so the new product appears immediately
+    const { revalidatePath } = require("next/cache");
+    revalidatePath("/");
+    revalidatePath("/shop");
+
     return NextResponse.json({ data: product }, { status: 201 });
   } catch (error) {
     console.error("Products POST error:", error);

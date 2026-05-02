@@ -126,7 +126,7 @@ export default function LandscapePage() {
   return (
     <div className="min-h-screen bg-[#F9FBF8]">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-32 bg-[url('https://images.unsplash.com/photo-1558904541-efa843a96f09?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center">
+      <section className="relative overflow-hidden pt-24 pb-20 lg:pt-32 lg:pb-32 bg-[url('https://images.unsplash.com/photo-1558171813-4c088753af8f?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center">
         {/* Modern animated overlay */}
         <div className="absolute inset-0 bg-[#0a1f06]/70 backdrop-blur-[2px]"></div>
         <div className="absolute inset-0 bg-linear-to-b from-transparent via-[#0a1f06]/40 to-[#0a1f06]"></div>

@@ -97,10 +97,14 @@ export function useAuth() {
   const { user, isLoading, isAuthenticated } = useAuthStore();
 
   const signOut = useCallback(async () => {
-    const supabase = createClient();
-    useAuthStore.getState().clearUser();
-    await supabase.auth.signOut().catch(() => {});
-    window.location.assign("/api/auth/logout");
+    try {
+      useAuthStore.getState().clearUser();
+      // Navigate to server-side logout which properly clears cookies & session
+      window.location.href = "/api/auth/logout";
+    } catch {
+      // Fallback: force reload to clear any stale state
+      window.location.href = "/api/auth/logout";
+    }
   }, []);
 
   return {

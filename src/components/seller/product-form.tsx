@@ -27,7 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ImageUpload } from "@/components/shared/image-upload";
+import { LocalImageUpload } from "@/components/shared/local-image-upload";
 import { PRODUCT_UNITS, OCCASIONS, STORAGE_BUCKETS } from "@/lib/constants";
 import type { Category } from "@/types";
 
@@ -68,9 +68,13 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [imageUrls, setImageUrls] = useState<string[]>(
+  
+  // Track existing uploaded URLs (for edit mode)
+  const [existingUrls, setExistingUrls] = useState<string[]>(
     initialData?.images || []
   );
+  // Track new files to upload
+  const [newFiles, setNewFiles] = useState<File[]>([]);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -125,19 +129,58 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
 
   const handleSubmit = useCallback(
     async (data: ProductFormData) => {
-      if (imageUrls.length === 0) {
-        toast.error("Please upload at least one image");
+      if (existingUrls.length === 0 && newFiles.length === 0) {
+        toast.error("Please add at least one image");
         return;
       }
 
       setIsSaving(true);
       try {
+        // Upload new files first
+        const newlyUploadedUrls: string[] = [];
+        if (newFiles.length > 0) {
+          toast.loading(`Uploading ${newFiles.length} image(s)...`, { id: "upload-toast" });
+          
+          const uploadPromises = newFiles.map(async (file) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("bucket", STORAGE_BUCKETS.PRODUCT_IMAGES);
+            formData.append("folder", "products");
+
+            const uploadRes = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+
+            const uploadJson = await uploadRes.json();
+            if (uploadRes.ok && uploadJson.url) {
+              return uploadJson.url;
+            } else {
+              throw new Error(uploadJson.error || `Failed to upload ${file.name}`);
+            }
+          });
+
+          try {
+            const results = await Promise.all(uploadPromises);
+            newlyUploadedUrls.push(...results);
+          } catch (error: any) {
+            toast.dismiss("upload-toast");
+            toast.error(error.message || "Failed to upload images");
+            setIsSaving(false);
+            return;
+          }
+          
+          toast.dismiss("upload-toast");
+        }
+
+        const allImages = [...existingUrls, ...newlyUploadedUrls];
+
         const payload = {
           ...data,
           tags: data.tags
             ? data.tags.split(",").map((t) => t.trim()).filter(Boolean)
             : [],
-          images: imageUrls,
+          images: allImages,
         };
 
         const url =
@@ -170,7 +213,7 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
         setIsSaving(false);
       }
     },
-    [imageUrls, mode, initialData, router]
+    [existingUrls, newFiles, mode, initialData, router]
   );
 
   return (
@@ -203,7 +246,12 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
                 onValueChange={(val) => form.setValue("category_id", val ?? "")}
               >
                 <SelectTrigger className="h-12 bg-surface-container-low border-0 shadow-none rounded-xl px-4 font-medium">
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Select category">
+                    {(() => {
+                      const selected = categories.find((c) => c.id === form.watch("category_id"));
+                      return selected ? (selected.parent_id ? `↳ ${selected.name}` : selected.name) : "Select category";
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl shadow-ambient border-0 bg-surface-lowest">
                   {categories.map((c) => (
@@ -343,12 +391,16 @@ export function ProductForm({ initialData, mode }: ProductFormProps) {
           <CardDescription className="text-on-surface-variant">Upload up to 8 high-quality photos. The first acts as the cover.</CardDescription>
         </CardHeader>
         <CardContent className="px-8 py-6">
-          <ImageUpload
-            value={imageUrls}
-            onChange={setImageUrls}
+          <LocalImageUpload
+            value={newFiles}
+            onChange={setNewFiles}
+            existingUrls={existingUrls}
+            onRemoveExisting={(idx) => {
+              const updated = [...existingUrls];
+              updated.splice(idx, 1);
+              setExistingUrls(updated);
+            }}
             maxImages={8}
-            bucket={STORAGE_BUCKETS.PRODUCT_IMAGES}
-            folder="products"
           />
         </CardContent>
       </Card>

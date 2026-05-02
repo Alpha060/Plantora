@@ -57,8 +57,8 @@ export default function AdminOrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const perPage = 20;
 
-  const fetchOrders = useCallback(async () => {
-    setIsLoading(true);
+  const fetchOrders = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
@@ -69,18 +69,18 @@ export default function AdminOrdersPage() {
       if (res.ok) {
         setOrders(json.orders);
         setTotal(json.total);
-      } else {
-        toast.error(json.error || "Failed to load orders");
       }
     } catch {
-      toast.error("Failed to load orders");
+      // silent on poll errors
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [page, statusFilter]);
 
   useEffect(() => {
     fetchOrders();
+    const interval = setInterval(() => fetchOrders(false), 20000);
+    return () => clearInterval(interval);
   }, [fetchOrders]);
 
   const totalPages = Math.ceil(total / perPage);

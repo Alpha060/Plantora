@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * GET /api/categories — List all categories with children count
@@ -8,11 +9,11 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function GET() {
   try {
-    const supabase = await createClient();
+    // Use admin client to bypass RLS — categories are public reference data
+    const supabase = createAdminClient();
     const { data: allCategories, error: allError } = await supabase
       .from("categories")
       .select("*")
-      .abortSignal(AbortSignal.timeout(2500))
       .order("sort_order", { ascending: true });
 
     if (allError) {

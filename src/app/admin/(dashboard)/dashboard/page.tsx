@@ -76,25 +76,25 @@ export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchDashboard = useCallback(async () => {
-    setIsLoading(true);
+  const fetchDashboard = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const res = await fetch("/api/admin/dashboard");
       const json = await res.json();
       if (res.ok) {
         setData(json);
-      } else {
-        toast.error(json.error || "Failed to load dashboard");
       }
     } catch {
-      toast.error("Failed to load dashboard");
+      // silent on poll errors
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchDashboard();
+    const interval = setInterval(() => fetchDashboard(false), 30000);
+    return () => clearInterval(interval);
   }, [fetchDashboard]);
 
   if (isLoading) {

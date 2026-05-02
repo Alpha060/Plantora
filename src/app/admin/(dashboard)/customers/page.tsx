@@ -56,26 +56,26 @@ export default function AdminCustomersPage() {
   const [confirmAction, setConfirmAction] = useState<DialogAction>(null);
   const perPage = 20;
 
-  const fetchCustomers = useCallback(async () => {
-    setIsLoading(true);
+  const fetchCustomers = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const res = await fetch(`/api/admin/customers?page=${page}`);
       const json = await res.json();
       if (res.ok) {
         setCustomers(json.customers);
         setTotal(json.total);
-      } else {
-        toast.error(json.error || "Failed to load customers");
       }
     } catch {
-      toast.error("Failed to load customers");
+      // silent on poll errors
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [page]);
 
   useEffect(() => {
     fetchCustomers();
+    const interval = setInterval(() => fetchCustomers(false), 20000);
+    return () => clearInterval(interval);
   }, [fetchCustomers]);
 
   const handleSuspendActivate = async (customerId: string, activate: boolean) => {

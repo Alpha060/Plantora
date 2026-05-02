@@ -56,6 +56,27 @@ export function SellerLoginForm() {
         return;
       }
 
+      if (userRole === "seller") {
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("status")
+          .eq("user_id", userId)
+          .single();
+
+        if (storeData) {
+          if (storeData.status === "pending") {
+            toast.error("Your account is pending admin approval. Please wait.");
+            await supabase.auth.signOut();
+            return;
+          }
+          if (storeData.status === "rejected") {
+            toast.error("Your account registration was rejected.");
+            await supabase.auth.signOut();
+            return;
+          }
+        }
+      }
+
       toast.success("Logged in successfully!");
       router.push("/seller/dashboard");
       router.refresh();

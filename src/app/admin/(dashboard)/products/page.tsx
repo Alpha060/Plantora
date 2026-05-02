@@ -42,8 +42,8 @@ export default function AdminProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const perPage = 20;
 
-  const fetchProducts = useCallback(async () => {
-    setIsLoading(true);
+  const fetchProducts = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
@@ -54,18 +54,18 @@ export default function AdminProductsPage() {
       if (res.ok) {
         setProducts(json.products);
         setTotal(json.total);
-      } else {
-        toast.error(json.error || "Failed to load products");
       }
     } catch {
-      toast.error("Failed to load products");
+      // silent on poll errors
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [page, statusFilter]);
 
   useEffect(() => {
     fetchProducts();
+    const interval = setInterval(() => fetchProducts(false), 20000);
+    return () => clearInterval(interval);
   }, [fetchProducts]);
 
   const totalPages = Math.ceil(total / perPage);

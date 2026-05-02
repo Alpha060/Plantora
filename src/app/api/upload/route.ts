@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * POST /api/upload
@@ -8,9 +9,8 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function POST(request: NextRequest) {
   try {
+    // Auth check via session client
     const supabase = await createClient();
-
-    // Check auth
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
       ? `${folder}/${timestamp}-${randomStr}.${ext}`
       : `${timestamp}-${randomStr}.${ext}`;
 
-    // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
+    // Upload via admin client to bypass storage RLS
+    const adminSupabase = createAdminClient();
+    const { error: uploadError } = await adminSupabase.storage
       .from(bucket)
       .upload(filePath, file, {
         cacheControl: "3600",
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     // Get public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    } = adminSupabase.storage.from(bucket).getPublicUrl(filePath);
 
     return NextResponse.json({ url: publicUrl, path: filePath }, { status: 200 });
   } catch (error) {

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-type SellerStatus = "pending" | "active" | "rejected" | "suspended";
+type SellerStatus = "pending" | "approved" | "rejected" | "suspended";
 
 interface SellerStoreDetail {
   id: string;
@@ -125,7 +125,7 @@ export default function AdminSellerApprovalPage({ params }: { params: Promise<{ 
                 variant="outline"
                 className={`px-3 py-1 rounded-full font-medium uppercase tracking-wider text-[10px] shadow-sm
                   ${
-                    store.status === "active" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                    store.status === "approved" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
                     store.status === "pending" ? "bg-amber-100 text-amber-700 border-amber-200" :
                     store.status === "suspended" ? "bg-red-100 text-red-700 border-red-200" :
                     store.status === "rejected" ? "bg-gray-100 text-gray-700 border-gray-200" :
@@ -155,7 +155,7 @@ export default function AdminSellerApprovalPage({ params }: { params: Promise<{ 
               </Button>
               <Button 
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => updateStatus("active")}
+                onClick={() => updateStatus("approved")}
                 disabled={isUpdating}
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -163,7 +163,7 @@ export default function AdminSellerApprovalPage({ params }: { params: Promise<{ 
               </Button>
             </>
           )}
-          {store.status === "active" && (
+          {store.status === "approved" && (
             <Button 
               variant="outline" 
               className="text-red-600 border-red-200 hover:bg-red-50"

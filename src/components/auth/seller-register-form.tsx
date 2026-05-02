@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createClient } from "@/lib/supabase/client";
+
 import { z } from "zod";
 
 const sellerRegisterSchema = z.object({
@@ -133,7 +133,10 @@ export function SellerRegisterForm() {
     gst_certificate?: File;
     shop_photo?: File;
   }>({});
-  const router = useRouter();
+
+  // Registration phase
+  const [phase, setPhase] = useState<"form" | "success">("form");
+
   const { contact, formatPhone } = useContact();
 
   const form = useForm<SellerRegisterFormData>({
@@ -177,114 +180,104 @@ export function SellerRegisterForm() {
     form.setValue("categories", updated, { shouldValidate: true });
   };
 
+  const handleNext = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    let fieldsToValidate: (keyof SellerRegisterFormData)[] = [];
+    if (currentStep === 1) {
+      fieldsToValidate = [
+        "store_name",
+        "store_tagline",
+        "store_description",
+        "full_name",
+        "phone",
+        "email",
+        "alternate_phone",
+      ];
+    } else if (currentStep === 2) {
+      fieldsToValidate = [
+        "business_type",
+        "gst_number",
+        "years_in_business",
+        "employee_count",
+        "categories",
+        "address_line1",
+        "address_line2",
+        "city",
+        "state",
+        "pincode",
+        "google_maps_link",
+      ];
+    } else if (currentStep === 3) {
+      fieldsToValidate = ["password", "confirm_password", "agree_terms"];
+    }
+
+    const isValid = await form.trigger(fieldsToValidate);
+    if (isValid) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  // Submit: call server API directly to create user + store
   const onSubmit = async (data: SellerRegisterFormData) => {
     setIsLoading(true);
     try {
-      const supabase = createClient();
-
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            full_name: data.full_name,
-            role: "seller",
-          },
-        },
-      });
-
-      if (authError) {
-        toast.error(authError.message);
-        return;
-      }
-
-      const userId = authData.user?.id;
-      if (!userId) {
-        toast.error("Registration failed. Please try again.");
-        return;
-      }
-
-      // Generate a simple slug
-      const storeSlug = data.store_name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '');
-
-      // Combine address
-      const fullAddress = [data.address_line1, data.address_line2, data.city, data.state]
-        .filter(Boolean)
-        .join(", ");
-
-      // Create seller profile in 'stores' table
-      const { data: storeData, error: profileError } = await supabase.from("stores").insert({
-        user_id: userId,
-        store_name: data.store_name,
-        slug: storeSlug,
-        description: data.store_description,
-        phone: data.phone,
-        email: data.email,
-        address: fullAddress,
-        pin_code: data.pincode,
-        gst_number: data.gst_number || null,
-        metadata: {
+      const res = await fetch("/api/seller/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          full_name: data.full_name,
+          phone: data.phone,
+          store_name: data.store_name,
           store_tagline: data.store_tagline,
+          store_description: data.store_description,
           alternate_phone: data.alternate_phone,
           business_type: data.business_type,
+          gst_number: data.gst_number,
           years_in_business: data.years_in_business,
           employee_count: data.employee_count,
           categories: data.categories,
+          address_line1: data.address_line1,
+          address_line2: data.address_line2,
+          city: data.city,
+          state: data.state,
+          pincode: data.pincode,
           google_maps_link: data.google_maps_link,
-        },
-        status: "pending",
-      }).select('id').single();
+        }),
+      });
 
-      if (profileError || !storeData) {
-        toast.error("Failed to create store profile.");
-        console.error("Profile Error:", profileError);
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast.error(result.error || "Registration failed. Please try again.");
         return;
       }
 
-      const storeId = storeData.id;
+      // Upload documents via server API (best-effort, don't block success)
+      const storeId = result.storeId;
+      if (storeId && (uploadedFiles.pan_card || uploadedFiles.gst_certificate || uploadedFiles.shop_photo)) {
+        try {
+          const formData = new FormData();
+          formData.append("storeId", storeId);
+          if (uploadedFiles.pan_card) formData.append("pan_card", uploadedFiles.pan_card);
+          if (uploadedFiles.gst_certificate) formData.append("gst_certificate", uploadedFiles.gst_certificate);
+          if (uploadedFiles.shop_photo) formData.append("shop_photo", uploadedFiles.shop_photo);
 
-      // File Upload Helper
-      const uploadFile = async (bucket: string, path: string, file: File) => {
-        const { error } = await supabase.storage.from(bucket).upload(path, file);
-        if (error) throw error;
-        const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-        return data.publicUrl;
-      };
-
-      try {
-        // Upload Documents
-        const docsToInsert = [];
-        if (uploadedFiles.pan_card) {
-          const ext = uploadedFiles.pan_card.name.split('.').pop();
-          const url = await uploadFile('seller-documents', `pan/${storeId}-${Date.now()}.${ext}`, uploadedFiles.pan_card);
-          docsToInsert.push({ store_id: storeId, document_type: 'pan', document_url: url });
+          await fetch("/api/seller/upload-documents", {
+            method: "POST",
+            body: formData,
+          });
+        } catch (uploadErr) {
+          console.error("Document upload failed:", uploadErr);
         }
-        if (uploadedFiles.gst_certificate) {
-          const ext = uploadedFiles.gst_certificate.name.split('.').pop();
-          const url = await uploadFile('seller-documents', `gst/${storeId}-${Date.now()}.${ext}`, uploadedFiles.gst_certificate);
-          docsToInsert.push({ store_id: storeId, document_type: 'gst', document_url: url });
-        }
-        if (uploadedFiles.shop_photo) {
-          const ext = uploadedFiles.shop_photo.name.split('.').pop();
-          const url = await uploadFile('seller-documents', `shop/${storeId}-${Date.now()}.${ext}`, uploadedFiles.shop_photo);
-          docsToInsert.push({ store_id: storeId, document_type: 'shop_license', document_url: url });
-        }
-
-        if (docsToInsert.length > 0) {
-          await supabase.from("seller_documents").insert(docsToInsert);
-        }
-      } catch (uploadError) {
-        console.error("Document upload failed:", uploadError);
-        // We don't block the redirect, just warn the user
-        toast.warning("Profile created, but some documents failed to upload. You can re-upload them later.");
       }
 
-      toast.success("Registration successful! Please wait for approval.");
-      router.push("/seller/pending-approval");
+      setPhase("success");
+      toast.success("Registration successful!");
     } catch {
       toast.error("Registration failed. Please try again.");
     } finally {
@@ -802,7 +795,7 @@ export function SellerRegisterForm() {
                 <Link href="/terms" className="text-[#2D5A27] font-medium hover:underline">Terms & Conditions</Link>
                 {" "}and{" "}
                 <Link href="/privacy" className="text-[#2D5A27] font-medium hover:underline">Privacy Policy</Link>
-                {" "}of Plantora Daltanganj
+                {" "}of Plantora Daltonganj
               </Label>
             </div>
             {form.formState.errors.agree_terms && (
@@ -891,6 +884,77 @@ export function SellerRegisterForm() {
     }
   };
 
+
+  // ─── Success / Pending Approval Screen ───
+  if (phase === "success") {
+    return (
+      <div className="w-full max-w-[500px] mx-auto">
+        <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#E2E8F0]/50 p-8 sm:p-12 text-center">
+          <div className="relative w-24 h-24 mx-auto mb-8">
+            <div className="absolute inset-0 bg-[#E8F5E9] rounded-full animate-[pulse_2s_ease-in-out_infinite]" />
+            <div className="absolute inset-2 bg-[#C8E6C9] rounded-full flex items-center justify-center">
+              <CheckCircle className="h-10 w-10 text-[#2D5A27]" />
+            </div>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#1A3614] mb-3">
+            Registration Successful!
+          </h2>
+          <p className="text-[#4A5568] leading-relaxed mb-8">
+            Your seller account has been created and your application is now
+            <span className="font-semibold text-[#2D5A27]"> under review</span>.
+            Our admin team will verify your details and documents.
+          </p>
+
+          <div className="bg-[#F9FBF8] border border-[#E8F5E9] rounded-2xl p-6 mb-8 text-left space-y-3">
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-6 h-6 rounded-full bg-[#2D5A27] flex items-center justify-center shrink-0">
+                <Check className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-[#4A5568]">Account created successfully</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-6 h-6 rounded-full bg-[#2D5A27] flex items-center justify-center shrink-0">
+                <Check className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-[#4A5568]">Store profile submitted for review</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+              </div>
+              <span className="text-[#4A5568]">Awaiting admin approval (24-48 hrs)</span>
+            </div>
+          </div>
+
+          <p className="text-sm text-[#718096] mb-8">
+            You&apos;ll receive an email notification once your store is approved.
+            After approval, you can log in and start selling!
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link href="/" className="flex-1">
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl border-[#E2E8F0] text-[#4A5568]"
+              >
+                Go to Homepage
+              </Button>
+            </Link>
+            <Link href="/seller/login" className="flex-1">
+              <Button
+                className="w-full h-12 bg-[#2D5A27] hover:bg-[#1A3614] rounded-xl text-white font-bold"
+              >
+                Go to Seller Login
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Normal Multi-Step Form ───
   return (
     <div className="w-full max-w-[600px] mx-auto">
       {/* Desktop View - Welcome Text */}
@@ -961,7 +1025,7 @@ export function SellerRegisterForm() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setCurrentStep(currentStep - 1)}
+                onClick={(e) => { e.preventDefault(); setCurrentStep(currentStep - 1); }}
                 className="h-11 px-6"
               >
                 Back
@@ -973,7 +1037,7 @@ export function SellerRegisterForm() {
             {currentStep < 4 ? (
               <Button
                 type="button"
-                onClick={() => setCurrentStep(currentStep + 1)}
+                onClick={(e) => handleNext(e)}
                 className="h-11 px-6 bg-[#2D5A27] hover:bg-[#1A3614]"
               >
                 Continue

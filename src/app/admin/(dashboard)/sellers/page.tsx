@@ -26,25 +26,26 @@ export default function AdminSellersPage() {
   const [sellers, setSellers] = useState<SellerRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchSellers = useCallback(async () => {
-    setIsLoading(true);
+  const fetchSellers = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const res = await fetch("/api/admin/sellers");
       const json = await res.json();
       if (res.ok) {
         setSellers(json || []);
-      } else {
-        toast.error("Failed to load sellers");
       }
     } catch {
-      toast.error("Failed to load sellers");
+      // silent on poll errors
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchSellers();
+    // Auto-refresh every 15 seconds
+    const interval = setInterval(() => fetchSellers(false), 15000);
+    return () => clearInterval(interval);
   }, [fetchSellers]);
 
   const columns: ColumnDef<SellerRow>[] = [
@@ -96,7 +97,7 @@ export default function AdminSellersPage() {
             variant="outline"
             className={`px-3 py-1 rounded-full font-medium uppercase tracking-wider text-[10px]
               ${
-                status === "active" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                status === "approved" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
                 status === "pending" ? "bg-amber-100 text-amber-700 border-amber-200" :
                 status === "suspended" ? "bg-red-100 text-red-700 border-red-200" :
                 status === "rejected" ? "bg-gray-100 text-gray-700 border-gray-200" :

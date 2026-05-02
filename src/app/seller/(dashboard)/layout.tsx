@@ -47,29 +47,7 @@ export default async function SellerDashboardLayout({
       .single();
 
     if (!store) {
-      redirect("/seller/store");
-    }
-
-    // Check onboarding progress: documents and bank details
-    const [docsResult, bankResult] = await Promise.all([
-      supabase
-        .from("seller_documents")
-        .select("id")
-        .eq("store_id", store.id)
-        .single(),
-      supabase
-        .from("seller_bank_details")
-        .select("id")
-        .eq("store_id", store.id)
-        .single(),
-    ]);
-
-    if (!docsResult.data) {
-      redirect("/seller/documents");
-    }
-
-    if (!bankResult.data) {
-      redirect("/seller/bank");
+      redirect("/seller/register");
     }
 
     // Pending / rejected store — show approval page

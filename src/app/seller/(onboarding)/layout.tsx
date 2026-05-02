@@ -13,7 +13,7 @@ const steps = [
   { id: "pending", title: "Review", icon: Clock, path: "/seller/pending-approval" },
 ];
 
-export function OnboardingStepper() {
+function OnboardingStepper() {
   const pathname = usePathname();
   
   // Find current step index
