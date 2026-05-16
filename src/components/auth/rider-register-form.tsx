@@ -129,7 +129,7 @@ export function RiderRegisterForm() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Vehicle Type <span className="text-red-500">*</span></Label>
-            <Select onValueChange={(val) => form.setValue("vehicle_type", val)} defaultValue="bike">
+            <Select onValueChange={(val) => val && form.setValue("vehicle_type", val)} defaultValue="bike">
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Select vehicle" />
               </SelectTrigger>
