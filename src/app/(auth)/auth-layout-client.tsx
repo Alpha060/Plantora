@@ -8,7 +8,7 @@ import { Leaf } from "lucide-react";
 export function AuthLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname.includes("/seller/")) {
+  if (pathname.includes("/seller/") || pathname.includes("/rider/")) {
     return <>{children}</>;
   }
 

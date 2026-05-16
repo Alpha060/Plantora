@@ -37,5 +37,17 @@ export default async function RiderDashboardLayout({
     redirect("/login?error=blocked");
   }
 
+  if (profile.role === "rider") {
+    const { data: rider } = await supabase
+      .from("riders")
+      .select("is_active")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!rider || !rider.is_active) {
+      redirect("/rider/pending-approval");
+    }
+  }
+
   return <RiderDashboardShell>{children}</RiderDashboardShell>;
 }

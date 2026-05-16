@@ -10,13 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 
 type SellerOrderStatus =
-  | "pending"
-  | "processing"
-  | "shipped"
+  | "placed"
+  | "confirmed"
+  | "packed"
+  | "rider_assigned"
+  | "picked_up"
   | "out_for_delivery"
   | "delivered"
   | "cancelled"
-  | "returned";
+  | "return_initiated"
+  | "returned"
+  | "refunded";
 
 interface DeliveryAddress {
   fullName?: string;
@@ -127,9 +131,11 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ id
               variant="outline"
               className={`px-3 py-1 rounded-full font-medium uppercase tracking-wider text-[10px] shadow-sm
                 ${
-                  order.status === "pending" ? "bg-amber-100 text-amber-700 border-amber-200" :
-                  order.status === "processing" ? "bg-blue-100 text-blue-700 border-blue-200" :
-                  order.status === "shipped" ? "bg-indigo-100 text-indigo-700 border-indigo-200" :
+                  order.status === "placed" ? "bg-teal-100 text-teal-700 border-teal-200" :
+                  order.status === "confirmed" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                  order.status === "packed" ? "bg-indigo-100 text-indigo-700 border-indigo-200" :
+                  order.status === "rider_assigned" ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                  order.status === "picked_up" ? "bg-orange-100 text-orange-700 border-orange-200" :
                   order.status === "out_for_delivery" ? "bg-purple-100 text-purple-700 border-purple-200" :
                   order.status === "delivered" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
                   "bg-red-100 text-red-700 border-red-200"
@@ -197,32 +203,32 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ id
             </h3>
             
             <div className="flex flex-wrap gap-3">
-              {order.status === "pending" && (
+              {order.status === "placed" && (
                 <Button 
-                  onClick={() => updateStatus("processing")} 
+                  onClick={() => updateStatus("confirmed")} 
                   disabled={isUpdating}
                   className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                 >
                   <Clock className="w-4 h-4 mr-2" />
-                  Mark as Processing
+                  Confirm Order
                 </Button>
               )}
-              {order.status === "processing" && (
+              {order.status === "confirmed" && (
                 <Button 
-                  onClick={() => updateStatus("shipped")} 
+                  onClick={() => updateStatus("packed")} 
                   disabled={isUpdating}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                 >
-                  <Truck className="w-4 h-4 mr-2" />
-                  Mark as Shipped
+                  <Package className="w-4 h-4 mr-2" />
+                  Mark as Packed
                 </Button>
               )}
-              {order.status === "shipped" && (
+              {["packed", "rider_assigned", "picked_up", "out_for_delivery"].includes(order.status) && (
                 <span className="text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-lg border">
-                  Waiting for Rider to mark &apos;Out for Delivery&apos;.
+                  Waiting for Logistics/Rider to deliver the package.
                 </span>
               )}
-              {!["pending", "processing"].includes(order.status) && order.status !== "shipped" && (
+              {!["placed", "confirmed", "packed", "rider_assigned", "picked_up", "out_for_delivery", "delivered", "cancelled"].includes(order.status) && (
                 <span className="text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-lg border">
                   Status cannot be updated by seller at this stage.
                 </span>

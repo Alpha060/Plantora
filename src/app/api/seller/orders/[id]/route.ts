@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
 
 type SellerOrderStatus =
-  | "pending"
-  | "processing"
-  | "shipped"
+  | "placed"
+  | "confirmed"
+  | "packed"
+  | "rider_assigned"
+  | "picked_up"
   | "out_for_delivery"
   | "delivered"
   | "cancelled"
-  | "returned";
+  | "return_initiated"
+  | "returned"
+  | "refunded";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown error";
@@ -25,8 +32,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { data: store } = await supabase.from("stores").select("id").eq("user_id", user.id).single();
     if (!store) return NextResponse.json({ error: "Store not found" }, { status: 404 });
 
+    const supabaseAdmin = createAdminClient();
+
     // Fetch the main order
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .select("*")
       .eq("id", orderId)
@@ -35,17 +44,37 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (orderError || !order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
     // Fetch items belonging specifically to this seller
-    const { data: items, error: itemsError } = await supabase
+    const { data: orderSeller } = await supabaseAdmin
+      .from("order_sellers")
+      .select("id, status")
+      .eq("order_id", orderId)
+      .eq("store_id", store.id)
+      .single();
+
+    if (!orderSeller) {
+      return NextResponse.json({ error: "No items found for your store in this order." }, { status: 403 });
+    }
+
+    const { data: items, error: itemsError } = await supabaseAdmin
       .from("order_items")
       .select("*")
-      .eq("order_id", orderId)
-      .eq("order_seller_id", store.id);
+      .eq("order_seller_id", orderSeller.id);
 
     if (itemsError || !items || items.length === 0) {
       return NextResponse.json({ error: "No items found for your store in this order." }, { status: 403 });
     }
 
-    return NextResponse.json({ order, items });
+    // Override the global order status with the seller's specific sub-order status
+    const orderWithSellerStatus = {
+      ...order,
+      status: orderSeller.status
+    };
+
+    return NextResponse.json({ order: orderWithSellerStatus, items }, {
+      headers: {
+        "Cache-Control": "no-store, max-age=0"
+      }
+    });
 
   } catch (error: unknown) {
     console.error("Order GET Error:", getErrorMessage(error));
@@ -64,15 +93,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { data: store } = await supabase.from("stores").select("id").eq("user_id", user.id).single();
     if (!store) return NextResponse.json({ error: "Store not found" }, { status: 404 });
 
+    const supabaseAdmin = createAdminClient();
+
     // Verify they actually own items in this order
-    const { data: items } = await supabase
-      .from("order_items")
+    const { data: orderSeller } = await supabaseAdmin
+      .from("order_sellers")
       .select("id")
       .eq("order_id", orderId)
-      .eq("order_seller_id", store.id)
-      .limit(1);
+      .eq("store_id", store.id)
+      .single();
 
-    if (!items || items.length === 0) {
+    if (!orderSeller) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -88,28 +119,31 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (
       typeof status !== "string" ||
       ![
-        "pending",
-        "processing",
-        "shipped",
+        "placed",
+        "confirmed",
+        "packed",
+        "rider_assigned",
+        "picked_up",
         "out_for_delivery",
         "delivered",
         "cancelled",
+        "return_initiated",
         "returned",
+        "refunded"
       ].includes(status)
     ) {
       return NextResponse.json({ error: "Missing status" }, { status: 400 });
     }
 
-    // Update the main order status
-    // Note: In a multi-vendor cart, updating orders.status updates it for ALL sellers.
-    // Given the current simple schema, applying it to orders is the correct path.
-    const { error: updateError } = await supabase
-      .from("orders")
+    // Update the seller's specific sub-order status
+    const { error: updateError } = await supabaseAdmin
+      .from("order_sellers")
       .update({
         status: status as SellerOrderStatus,
         updated_at: new Date().toISOString()
       })
-      .eq("id", orderId);
+      .eq("order_id", orderId)
+      .eq("store_id", store.id);
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });

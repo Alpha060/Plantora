@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
 
 interface SellerOrderListItem {
   order_id: string;
@@ -49,60 +52,56 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
-    // Fetch order items belonging to the seller
-    let query = supabase
-      .from("order_items")
+    const supabaseAdmin = createAdminClient();
+
+    // Fetch order_sellers (sub-orders) for this store
+    let query = supabaseAdmin
+      .from("order_sellers")
       .select(`
         id,
         order_id,
-        product_name,
-        quantity,
-        total_price,
+        status,
+        seller_amount,
         created_at,
-        orders!inner(order_number, status, total, delivery_date, created_at)
+        orders!inner(order_number, status, total, delivery_date, created_at),
+        order_items(quantity, total_price)
       `)
-      .eq("order_seller_id", store.id)
+      .eq("store_id", store.id)
       .order("created_at", { ascending: false });
 
     if (status && status !== "all") {
-      // Must filter orders!inner by status
       query = query.eq("orders.status", status);
     }
 
-    const { data: orderItems, error } = await query;
+    const { data: subOrders, error } = await query;
 
     if (error) {
       console.error("Orders DB Error:", error);
       return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
 
-    // Group items by order to present one row per Order
-    const ordersMap = new Map<string, FormattedSellerOrder>();
-    (orderItems as SellerOrderListItem[] | null)?.forEach((item) => {
-      if (!ordersMap.has(item.order_id)) {
-        ordersMap.set(item.order_id, {
-          id: item.order_id,
-          order_number: item.orders.order_number,
-          status: item.orders.status,
-          date: item.orders.created_at,
-          delivery_date: item.orders.delivery_date,
-          items: 1,
-          total: Number(item.total_price)
-        });
-      } else {
-        const existing = ordersMap.get(item.order_id);
-        if (existing) {
-          existing.items += 1;
-          existing.total += Number(item.total_price);
-        }
-      }
+    // Format orders for the frontend
+    const formattedOrders: FormattedSellerOrder[] = (subOrders || []).map((subOrder: any) => {
+      // Sum items quantity
+      const itemsCount = subOrder.order_items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0;
+      // We can use seller_amount for the total, or sum order_items total_price.
+      // Seller cut is seller_amount.
+      return {
+        id: subOrder.order_id, // frontend expects order.id to navigate to /orders/[id]
+        order_number: subOrder.orders.order_number,
+        status: subOrder.status,
+        date: subOrder.orders.created_at,
+        delivery_date: subOrder.orders.delivery_date,
+        items: itemsCount,
+        total: Number(subOrder.seller_amount || 0)
+      };
     });
 
-    const formattedOrders = Array.from(ordersMap.values()).sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-
-    return NextResponse.json(formattedOrders);
+    return NextResponse.json(formattedOrders, {
+      headers: {
+        "Cache-Control": "no-store, max-age=0"
+      }
+    });
 
   } catch (error: unknown) {
     console.error("Orders API Error:", getErrorMessage(error));

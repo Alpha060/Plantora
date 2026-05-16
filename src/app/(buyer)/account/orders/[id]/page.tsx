@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { formatPrice, formatDate, formatStatus, getStatusColor } from "@/lib/helpers/format";
+import { createClient } from "@/lib/supabase/client";
 
 interface OrderDetail {
   id: string;
@@ -73,6 +74,25 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (!orderId) return;
     fetchOrder();
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`order_${orderId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` },
+        () => fetchOrder()
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "order_sellers", filter: `order_id=eq.${orderId}` },
+        () => fetchOrder()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [orderId]);
 
   const fetchOrder = async () => {
@@ -114,7 +134,18 @@ export default function OrderDetailPage() {
 
   // Get the highest sub-order status for timeline
   const getStatusIndex = (status: string) => STATUS_STEPS.findIndex((s) => s.key === status);
-  const overallStatusIdx = order.status === "delivered" ? 4 : order.status === "cancelled" ? -1 : getStatusIndex(order.status);
+  
+  let overallStatusIdx = -1;
+  if (order.status === "cancelled") {
+    overallStatusIdx = -1;
+  } else if (order.status === "delivered") {
+    overallStatusIdx = 4;
+  } else if (order.order_sellers && order.order_sellers.length > 0) {
+    overallStatusIdx = Math.max(...order.order_sellers.map(s => getStatusIndex(s.status)));
+  } else {
+    overallStatusIdx = getStatusIndex(order.status);
+  }
+
   const addr = order.delivery_address;
 
   return (

@@ -11,6 +11,7 @@ const AUTH_ROUTES = [
   "/seller/register",
   "/admin/login",
   "/rider/login",
+  "/rider/register",
 ];
 
 // ── Allowed roles per route prefix (defense-in-depth) ────────────────
@@ -107,10 +108,10 @@ export async function proxy(request: NextRequest) {
 
       const role = (profile?.role || "buyer") as UserRole;
 
-      // Allow buyers to visit /seller/register or /seller/login
+      // Allow buyers to visit /seller/register, /seller/login, /rider/register, /rider/login
       // (they're upgrading their account)
       if (
-        (pathname === "/seller/register" || pathname === "/seller/login") &&
+        (pathname === "/seller/register" || pathname === "/seller/login" || pathname === "/rider/register" || pathname === "/rider/login") &&
         role === "buyer"
       ) {
         return addSecurityHeaders(supabaseResponse);

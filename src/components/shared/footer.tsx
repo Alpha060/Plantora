@@ -14,7 +14,7 @@ const quickLinks = [
   { name: "Track Order", href: "/track-order" },
   { name: "Become a Seller", href: "/seller/register" },
   { name: "Seller Login", href: "/seller/login" },
-  { name: "Become a Rider", href: "/rider/login" },
+  { name: "Become a Rider", href: "/rider/register" },
   { name: "Rider Login", href: "/rider/login" },
 ];
 

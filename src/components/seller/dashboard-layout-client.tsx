@@ -57,7 +57,7 @@ export function SellerDashboardLayoutClient({
   // Fetch real pending order count
   const fetchBadges = useCallback(async () => {
     try {
-      const res = await fetch("/api/seller/orders?status=pending");
+      const res = await fetch("/api/seller/orders?status=placed");
       if (res.ok) {
         const data = await res.json();
         // API returns a plain array of orders
