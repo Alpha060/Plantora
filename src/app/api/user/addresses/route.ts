@@ -19,7 +19,12 @@ export async function GET() {
       .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ data: data || [] });
+    // Normalize: expose full_address as address_line1 so all consumers agree on field names
+    const normalized = (data || []).map((a: Record<string, unknown>) => ({
+      ...a,
+      address_line1: a.full_address,
+    }));
+    return NextResponse.json({ data: normalized });
   } catch (error) {
     console.error("Addresses GET error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { useCartStore } from "@/stores/cart-store";
 import { formatPrice } from "@/lib/helpers/format";
-import { createClient } from "@/lib/supabase/client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -109,24 +108,21 @@ export default function CheckoutPage() {
   // Seller grouping for summary
   const storeGroups = itemsByStore();
 
-  // Fetch saved addresses
-  useEffect(() => {
-    const fetchAddresses = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("addresses")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("is_default", { ascending: false });
-      
-      if (data && data.length > 0) {
-        setSavedAddresses(data as CheckoutAddress[]);
-        if (!address) setAddress(data[0] as CheckoutAddress);
+  // Fetch saved addresses via API route (uses server-side auth, consistent field names)
+  const fetchAddresses = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/addresses");
+      const json = await res.json();
+      if (res.ok && json.data?.length > 0) {
+        setSavedAddresses(json.data as CheckoutAddress[]);
+        if (!address) setAddress(json.data[0] as CheckoutAddress);
       }
-    };
+    } catch { /* silent */ }
+  }, [address]);
+
+  useEffect(() => {
     fetchAddresses();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSaveAddress = async () => {
@@ -138,39 +134,41 @@ export default function CheckoutPage() {
       toast.error("We only deliver within Daltonganj area. Check pin code.");
       return;
     }
-    
-    setIsSubmitting(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data, error } = await supabase.from("addresses").insert({
-        user_id: user.id,
-        full_name: formData.full_name,
-        phone: formData.phone,
-        full_address: formData.full_address,
-        pin_code: formData.pin_code,
-        city: "Daltonganj",
-        state: "Jharkhand",
-        landmark: formData.landmark || null,
-        label: formData.label,
-        is_default: savedAddresses.length === 0,
-      }).select().single();
 
-      if (data && !error) {
-        const newAddr = data as unknown as CheckoutAddress;
-        setSavedAddresses([newAddr, ...savedAddresses]);
-        setAddress(newAddr);
-        setAddressOpen(false);
-        setFormData({
-          full_name: "", phone: "", full_address: "",
-          city: "Daltonganj", state: "Jharkhand", pin_code: "", landmark: "", label: "Home",
-        });
-        toast.success("Address saved to profile");
-      } else {
-        toast.error("Failed to save address");
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/user/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: formData.full_name,
+          phone: formData.phone,
+          address_line1: formData.full_address,
+          pin_code: formData.pin_code,
+          city: "Daltonganj",
+          state: "Jharkhand",
+          landmark: formData.landmark || null,
+          label: formData.label || "Home",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Failed to save address");
+        return;
       }
+      // Refresh address list from API to get normalized fields
+      await fetchAddresses();
+      setAddressOpen(false);
+      setFormData({
+        full_name: "", phone: "", full_address: "",
+        city: "Daltonganj", state: "Jharkhand", pin_code: "", landmark: "", label: "Home",
+      });
+      toast.success("Address saved!");
+    } catch {
+      toast.error("Failed to save address. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   const handleApplyCoupon = async () => {

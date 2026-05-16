@@ -218,7 +218,7 @@ export function SellerLoginForm() {
       {/* Register Link */}
       <div className="mt-12 text-center">
         <p className="text-sm text-[#718096] mb-4">
-          New to GreenBloom Seller Panel?
+          New to Plantora Seller Panel?
         </p>
         <Link
           href="/seller/register"

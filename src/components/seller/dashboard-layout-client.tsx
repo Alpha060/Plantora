@@ -85,17 +85,16 @@ export function SellerDashboardLayoutClient({
     <div className="min-h-screen flex bg-gray-50">
       {/* Mobile Overlay */}
       {isMobileOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity" 
-          onClick={() => setIsMobileOpen(false)} 
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
+          onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 bg-[#014f36] text-white border-r border-[#016040] shadow-sm transition-all duration-300 flex flex-col w-64 ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 ${isSidebarCollapsed ? "md:w-16" : "md:w-64"}`}
+        className={`fixed inset-y-0 left-0 z-50 bg-[#014f36] text-white border-r border-[#016040] shadow-sm transition-all duration-300 flex flex-col w-64 ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          } md:translate-x-0 ${isSidebarCollapsed ? "md:w-16" : "md:w-64"}`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-[#016040]">
@@ -105,7 +104,7 @@ export function SellerDashboardLayoutClient({
                 <Leaf className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white tracking-wide">GreenBloom</p>
+                <p className="text-sm font-bold text-white tracking-wide">Plantora</p>
                 <p className="text-[9px] text-white/70 uppercase tracking-widest">Daltonganj</p>
               </div>
             </div>
@@ -140,11 +139,10 @@ export function SellerDashboardLayoutClient({
                 key={link.href}
                 href={link.href}
                 title={isSidebarCollapsed ? link.name : undefined}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
                     ? "bg-[#016545] text-white shadow-sm"
                     : "text-white/70 hover:bg-white/5 hover:text-white"
-                } ${isSidebarCollapsed ? "md:justify-center md:px-0" : ""}`}
+                  } ${isSidebarCollapsed ? "md:justify-center md:px-0" : ""}`}
                 onClick={() => setIsMobileOpen(false)}
               >
                 <div className="flex items-center gap-3">
@@ -165,9 +163,8 @@ export function SellerDashboardLayoutClient({
           <a
             href="/api/auth/logout"
             onClick={() => clearUser()}
-            className={`cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-colors ${
-              isSidebarCollapsed ? "md:justify-center md:px-0" : ""
-            }`}
+            className={`cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-colors ${isSidebarCollapsed ? "md:justify-center md:px-0" : ""
+              }`}
           >
             <LogOut className="h-4.5 w-4.5 shrink-0" />
             <span className={isSidebarCollapsed ? "md:hidden" : ""}>Logout</span>
@@ -177,9 +174,8 @@ export function SellerDashboardLayoutClient({
 
       {/* Main */}
       <div
-        className={`flex-1 transition-all duration-300 ${
-          isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
-        }`}
+        className={`flex-1 transition-all duration-300 ${isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
+          }`}
       >
         {/* Topbar */}
         <header className="h-16 bg-white border-b sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
@@ -196,7 +192,7 @@ export function SellerDashboardLayoutClient({
               )?.name || "Dashboard"}
             </h1>
           </div>
-          
+
           <div className="flex items-center gap-6">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full border border-emerald-100">
               <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
@@ -208,7 +204,7 @@ export function SellerDashboardLayoutClient({
                 <Bell className="h-5 w-5" />
                 <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full border border-white"></span>
               </button>
-              
+
               <div className="flex items-center gap-3 cursor-pointer">
                 <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold overflow-hidden">
                   {user?.avatar_url ? (
@@ -218,11 +214,11 @@ export function SellerDashboardLayoutClient({
                     <span className="text-xs font-bold">
                       {user?.full_name
                         ? user.full_name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2)
                         : "S"}
                     </span>
                   )}
@@ -232,7 +228,7 @@ export function SellerDashboardLayoutClient({
                     {user?.full_name || user?.email || "Seller"}
                   </p>
                   <p className="text-[11px] text-gray-500 leading-none">
-                    {user?.role === "seller" ? "GreenBloom Store" : "GreenBloom Seller"}
+                    {user?.role === "seller" ? "Plantora Store" : "Plantora Seller"}
                   </p>
                 </div>
                 <ChevronDown className="h-4 w-4 text-gray-400 hidden md:block" />
